@@ -15,12 +15,16 @@
             this.color = "rgba(20,20,20,.4)";
             this.binding();
             this.player = new Player();
+            this.enemy = new Enemy();
             this.backgroundUp = new BgUp();
             this.backgroundDown = new BgDown();
             this.lightning = new Lightning();
             this.bullet = [];
+            this.rocket = [];
+            
             this.score = 0;
             this.shooting = false;
+            this.shootingR = false;
 
 
             this.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame;
@@ -47,6 +51,12 @@
             if (e.keyCode === 39 || e.keyCode === 68) {
                 Game.player.movingRight = false;
             }
+            if (e.keyCode === 16) {
+                if (Game.player.rocketEl) {
+                    Game.rocket.push(new Rocket())
+                    Game.player.rocketEl--;
+                }
+            }
         },
 
         buttonDown: function (e) {
@@ -59,6 +69,9 @@
             }
             if (e.keyCode === 39 || e.keyCode === 68) {
                 Game.player.movingRight = true;
+            }
+            if (e.keyCode === 16) {
+                Game.shootingR = true;
             }
         },
 
@@ -80,18 +93,25 @@
             Game.backgroundDown.draw();
             Game.backgroundDown.update();
             Game.lightning.draw();
+            Game.enemy.draw();
+            Game.enemy.update();
             Game.player.draw();
             Game.player.update();
             Game.player.shooting();
+           // Game.player.shootingR();
             for (var i = 0; i < Game.bullet.length; i++) {
                 Game.bullet[i].draw();
                 Game.bullet[i].update();
+            }
+            for (var i = 0; i < Game.rocket.length; i++) {
+                Game.rocket[i].draw();
+                Game.rocket[i].update();
             }
             Game.backgroundUp.draw();
             Game.backgroundUp.update();
 
             Game.currentFrame = Game.requestAnimationFrame.call(window, Game.loop);
-            //console.log(Game.player.bg.onload())
+           // console.log(Game.rocket)
         },
 
 
@@ -105,15 +125,27 @@
         this.y = Game.c.height - this.height;
         this.movingLeft = false;
         this.movingRight = false;
-        this.speed = 8;
+        this.speed = 6;
         this.shootingspeed = 50;
         this.shootingTimer = 0;
+        this.rocketEl = 2;
         //this.color = "white";
         this.bg = new Image();
         this.bg.src = 'http://funkyimg.com/i/JSNX.png';
     };
     Player.prototype.draw = function () {
-        Game.ctx.drawImage(this.bg, this.x, this.y);
+        if (this.movingLeft) {
+            Game.ctx.setTransform(0.9, -0.1, 0.1, 0.95,this.x, this.y+10);
+            Game.ctx.drawImage(this.bg, 0, 0);
+            Game.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        }
+        else if (this.movingRight) {
+            Game.ctx.setTransform(0.9, 0.1, -0.1, 0.95, this.x, this.y);
+            Game.ctx.drawImage(this.bg, 0, 0);
+            Game.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        }
+       else Game.ctx.drawImage(this.bg, this.x, this.y);
+        
     };
     Player.prototype.update = function () {
         if (this.movingLeft && this.x > 0) {
@@ -131,8 +163,40 @@
             this.shootingTimer++;
         }
         if (this.shootingTimer >= 10) this.shootingTimer = 0;
-
-        // console.log(this.shootingTimer)
+    }
+    //****************************ENEMY*********************************//
+    var Enemy = function () {
+        this.width = 50;
+        this.height = 10;
+        this.color = 'blue';
+        this.x = Game.c.width / 2 - this.width / 2;
+        this.y = 0;
+        this.movingLeft = true;
+        this.movingRight = false;
+        this.speed = 4;
+    }
+    Enemy.prototype.draw = function () {
+        Game.ctx.fillStyle = this.color;
+        Game.ctx.fillRect(this.x, this.y, this.width, this.height);
+    }
+    Enemy.prototype.update = function () {
+        if (this.movingLeft) {
+            this.x -= this.speed;
+        }
+        if (this.movingRight) {
+            this.x += this.speed;
+        }
+        if (this.x <= 0) {
+            this.movingLeft = false;
+            this.movingRight = true;
+        }
+        if (this.x + this.width >= Game.c.width) {
+            this.movingLeft = true;
+            this.movingRight = false;
+        }
+    }
+    Enemy.prototype.die = function () {
+        //if(Gmame)
     }
     //*************************BULLET*********************************//
     var Bullet = function () {
@@ -153,9 +217,42 @@
     }
     Bullet.prototype.update = function () {
         this.y -= this.speed;
-        if (this.y <= 0) Game.bullet.shift();
+        if (this.y <= 5) {
+            if ((this.x1 >= Game.enemy.x && this.x1 <= Game.enemy.x+Game.enemy.width) || (this.x2 >= Game.enemy.x && this.x2 < Game.enemy.x + Game.enemy.width)) {
+                Game.enemy.color = 'red';
+                console.log('s')
+            }
+            //console.log(this.x1, Game.enemy.x)
+            Game.bullet.shift();
+        }
     }
 
+    var Rocket = function () {
+        this.width = 3;
+        this.height = 8;
+        this.y = Game.player.y;
+        this.color = 'red';
+        this.speed =3;
+        this.x1 = Game.player.x + Game.player.width / 2 - 27 ;
+        this.x2 = Game.player.x + Game.player.width / 2 + 27 ;
+    }
+    Rocket.prototype.draw = function () {
+        Game.ctx.fillStyle = this.color;
+        this.random = Math.floor(Math.random() * 4 ) +1-2;
+        this.x1 += this.random;
+        this.x2 += this.random;
+        Game.ctx.fillRect(this.x1, this.y, this.width, this.height);
+        Game.ctx.fillRect(this.x2, this.y, this.width, this.height);
+        //console.log(this.random)
+    }
+    Rocket.prototype.update = function () {
+        this.y -= this.speed;
+        if (this.y <= 0) {
+            
+            
+            Game.rocket.shift();
+        }
+    }
     //*********************lightning*********************/
     var Lightning = function () {
         this.random = Math.floor((Math.random() * 6) + 1 - 3);
