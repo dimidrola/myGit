@@ -13,56 +13,49 @@
             this.c.height = this.c.height;
             this.ctx = this.c.getContext("2d");
             this.color = "rgba(20,20,20,.4)";
+            //add events
             this.binding();
+            //create player and enemies
             this.player = new Player();
-            this.enemy = new Enemy();
+            this.enemyId = 0;
+            this.enemy = [new Enemy()];
+            
+            //scene
             this.backgroundUp = new BgUp();
             this.backgroundDown = new BgDown();
             this.lightning = new Lightning();
+            //shooting
             this.bullet = [];
-            this.rocket = [];
-            
-            this.score = 0;
             this.shooting = false;
-            this.shootingR = false;
 
-
+            this.score = 0;
+            
             this.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame;
-
             this.loop();
         },
 
         binding: function () {
             window.addEventListener("keydown", this.buttonDown);
             window.addEventListener("keyup", this.buttonUp);
-            window.addEventListener("keypress", this.keyPressed);
-
         },
-
 
         buttonUp: function (e) {
             if (e.keyCode === 32) {
                 Game.shooting = false;
-                //Game.bullet.push(new Bullet())
             }
             if (e.keyCode === 37 || e.keyCode === 65) {
                 Game.player.movingLeft = false;
+                Game.player.animationTimer = 0;
             }
             if (e.keyCode === 39 || e.keyCode === 68) {
                 Game.player.movingRight = false;
-            }
-            if (e.keyCode === 16) {
-                if (Game.player.rocketEl) {
-                    Game.rocket.push(new Rocket())
-                    Game.player.rocketEl--;
-                }
+                Game.player.animationTimer = 0;
             }
         },
 
         buttonDown: function (e) {
             if (e.keyCode === 32) {
                 Game.shooting = true;
-
             }
             if (e.keyCode === 37 || e.keyCode === 65) {
                 Game.player.movingLeft = true;
@@ -70,49 +63,44 @@
             if (e.keyCode === 39 || e.keyCode === 68) {
                 Game.player.movingRight = true;
             }
-            if (e.keyCode === 16) {
-                Game.shootingR = true;
-            }
         },
 
-        keyPressed: function (e) {
-            if (e.keyCode === 32) {
-                //Game.bullet.push(new Bullet())
-                //setIntervall(function(){new Bullet()},900)
-            }
-        },
         clear: function () {
             this.ctx.fillStyle = Game.color;
             this.ctx.fillRect(0, 0, this.c.width, this.c.height);
         },
-        turn: function () {
-
-        },
+  
         loop: function () {
             Game.clear();
             Game.backgroundDown.draw();
             Game.backgroundDown.update();
             Game.lightning.draw();
-            Game.enemy.draw();
-            Game.enemy.update();
+            //Game.enemy.draw();
+            //Game.enemy.update();
+          
+            for (var j = 0; j < Game.enemy.length; j++) {
+                    if (Game.enemy[j]){
+                        Game.enemy[j].draw();
+                        Game.enemy[j].update();
+                        Game.enemy[j].dead();
+                    }
+            }
+            
             Game.player.draw();
             Game.player.update();
             Game.player.shooting();
-           // Game.player.shootingR();
             for (var i = 0; i < Game.bullet.length; i++) {
                 Game.bullet[i].draw();
                 Game.bullet[i].update();
             }
-            for (var i = 0; i < Game.rocket.length; i++) {
-                Game.rocket[i].draw();
-                Game.rocket[i].update();
-            }
+            //console.log(Game.bullet.length)
             Game.backgroundUp.draw();
             Game.backgroundUp.update();
 
+
+
             Game.currentFrame = Game.requestAnimationFrame.call(window, Game.loop);
-           // console.log(Game.rocket)
-        },
+        }
 
 
     };
@@ -128,25 +116,36 @@
         this.speed = 6;
         this.shootingspeed = 50;
         this.shootingTimer = 0;
-        this.rocketEl = 2;
-        //this.color = "white";
+        this.animationTimer = 0;
         this.bg = new Image();
         this.bg.src = 'http://funkyimg.com/i/JSNX.png';
     };
     Player.prototype.draw = function () {
+        var turning = Math.sin(this.animationTimer / 7) / 10;
         if (this.movingLeft) {
-            Game.ctx.setTransform(0.9, -0.1, 0.1, 0.95,this.x, this.y+10);
+            Game.ctx.setTransform(1, -turning, 0, 1, this.x, this.y + (turning/2*100));
+            if (turning >= 0) {
+                this.animationTimer++;
+            }
             Game.ctx.drawImage(this.bg, 0, 0);
             Game.ctx.setTransform(1, 0, 0, 1, 0, 0);
         }
         else if (this.movingRight) {
-            Game.ctx.setTransform(0.9, 0.1, -0.1, 0.95, this.x, this.y);
+            Game.ctx.setTransform(1, turning, 0, 1, this.x, this.y - (turning / 2 * 100));
+            if (turning >= 0) {
+                this.animationTimer++;
+            }
             Game.ctx.drawImage(this.bg, 0, 0);
             Game.ctx.setTransform(1, 0, 0, 1, 0, 0);
         }
-       else Game.ctx.drawImage(this.bg, this.x, this.y);
+        else {
+            
+            Game.ctx.drawImage(this.bg, this.x, this.y);
+        }
+
         
     };
+   
     Player.prototype.update = function () {
         if (this.movingLeft && this.x > 0) {
             this.x -= this.speed;
@@ -169,34 +168,37 @@
         this.width = 50;
         this.height = 10;
         this.color = 'blue';
-        this.x = Game.c.width / 2 - this.width / 2;
-        this.y = 0;
+       
+        this.angle = Math.random()*1.2;
+        this.colArr = 'red';
         this.movingLeft = true;
         this.movingRight = false;
-        this.speed = 4;
+        this.speed = .3;
+        this.y = 0;
+        this.life = 2;
+        this.id = Game.enemyId;
     }
     Enemy.prototype.draw = function () {
-        Game.ctx.fillStyle = this.color;
+        Game.ctx.fillStyle = this.colArr;
         Game.ctx.fillRect(this.x, this.y, this.width, this.height);
     }
     Enemy.prototype.update = function () {
-        if (this.movingLeft) {
-            this.x -= this.speed;
-        }
-        if (this.movingRight) {
-            this.x += this.speed;
-        }
-        if (this.x <= 0) {
-            this.movingLeft = false;
-            this.movingRight = true;
-        }
-        if (this.x + this.width >= Game.c.width) {
-            this.movingLeft = true;
-            this.movingRight = false;
-        }
+        var time = new Date().getTime() * 0.001;
+        this.x = Math.sin(time * this.angle) * (300 - this.width / 2) + 300 - this.width / 2//* 200 + 280;
+        this.y += this.speed;
     }
-    Enemy.prototype.die = function () {
-        //if(Gmame)
+    Enemy.prototype.dead = function () {
+        if (this.life <= 0) {
+            delete Game.enemy[this.id];
+            this.life = 2;
+            this.addEnemy();
+            this.addEnemy();
+        }
+        
+    }
+    Enemy.prototype.addEnemy = function () {
+        Game.enemyId++;
+        Game.enemy.push(new Enemy())
     }
     //*************************BULLET*********************************//
     var Bullet = function () {
@@ -206,8 +208,8 @@
         this.x1 = Game.player.x + Game.player.width / 2 - 27 + this.random;
         this.x2 = Game.player.x + Game.player.width / 2 + 27 + this.random;
         this.y = Game.player.y;
-        this.color = 'white';
-        this.speed = 10;
+        this.color = 'green';
+        this.speed = 15;
     }
     Bullet.prototype.draw = function () {
         Game.ctx.fillStyle = this.color;
@@ -217,42 +219,39 @@
     }
     Bullet.prototype.update = function () {
         this.y -= this.speed;
-        if (this.y <= 5) {
-            if ((this.x1 >= Game.enemy.x && this.x1 <= Game.enemy.x+Game.enemy.width) || (this.x2 >= Game.enemy.x && this.x2 < Game.enemy.x + Game.enemy.width)) {
-                Game.enemy.color = 'red';
-                console.log('s')
+
+        var self = this;
+        function foreach(item, i, arr) {
+            
+            if ((self.x1 >= Game.enemy[i].x && self.x1 <= Game.enemy[i].x + Game.enemy[i].width)
+                && (self.y >= Game.enemy[i].y && self.y <= Game.enemy[i].y + Game.enemy[i].height)) {
+
+                Game.score++;
+                document.getElementById('rat').innerHTML = Game.score;
+                self.x1 = 9999;
+                Game.enemy[i].life--;
+                console.log(Game.enemy[i].life, Game.enemy[i].id)
             }
-            //console.log(this.x1, Game.enemy.x)
-            Game.bullet.shift();
+            else if ((self.x2 >= Game.enemy[i].x && self.x2 <= Game.enemy[i].x + Game.enemy[i].width)
+                && (self.y >= Game.enemy[i].y && self.y <= Game.enemy[i].y + Game.enemy[i].height)) {
+                Game.score++;
+                document.getElementById('rat').innerHTML = Game.score;
+                self.x2 = 9999;
+                Game.enemy[i].life--;
+                console.log(Game.enemy[i].life, Game.enemy[i].id)
+            }
+           
+
+            
         }
+        if (this.y <= 0) {
+            Game.bullet.shift();
+
+        }
+        Game.enemy.forEach(foreach);
+
     }
 
-    var Rocket = function () {
-        this.width = 3;
-        this.height = 8;
-        this.y = Game.player.y;
-        this.color = 'red';
-        this.speed =3;
-        this.x1 = Game.player.x + Game.player.width / 2 - 27 ;
-        this.x2 = Game.player.x + Game.player.width / 2 + 27 ;
-    }
-    Rocket.prototype.draw = function () {
-        Game.ctx.fillStyle = this.color;
-        this.random = Math.floor(Math.random() * 4 ) +1-2;
-        this.x1 += this.random;
-        this.x2 += this.random;
-        Game.ctx.fillRect(this.x1, this.y, this.width, this.height);
-        Game.ctx.fillRect(this.x2, this.y, this.width, this.height);
-        //console.log(this.random)
-    }
-    Rocket.prototype.update = function () {
-        this.y -= this.speed;
-        if (this.y <= 0) {
-            
-            
-            Game.rocket.shift();
-        }
-    }
     //*********************lightning*********************/
     var Lightning = function () {
         this.random = Math.floor((Math.random() * 6) + 1 - 3);
@@ -273,7 +272,7 @@
     var BgUp = function () {
         this.bg = new Image();
         this.bg.src = 'http://funkyimg.com/i/JURf.png';
-        this.speed = 2;
+        this.speed = 10;
         this.width = this.bg.width;
         this.height = this.bg.height;
         this.x = 0;
@@ -288,7 +287,7 @@
         this.y += this.speed;
         this.y_next = this.y - this.height;
 
-        if (this.y_next == 0) this.y = 0;
+        if (this.y_next >= 0) this.y = 0;
     }
 
     var BgDown = function () {
@@ -310,7 +309,7 @@
         this.y += this.speed;
         this.y_next = this.y - this.height;
         //console.log(this.y, this.y_next)
-        if (this.y_next == 0) this.y = 0;
+        if (this.y_next >= 0) this.y = 0;
     }
 
     //********************
